@@ -10,6 +10,8 @@ import ApiError from "../utils/ApiError.util.js";
 import {
   generateAccessToken,
   generateRefreshToken,
+  verifyRefreshToken,
+  verifyAccessToken,
 } from "../utils/jwt.util.js";
 import { setRefreshTokenCookie } from "../utils/cookie.util.js";
 
@@ -169,4 +171,106 @@ const login = async (req, res, next) => {
   }
 };
 
-export { register, login };
+const getMe = (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new ApiError(401, "Unauthorized");
+    }
+    return res.status(200).json({
+      status: "success",
+      message: "User data retrieved successfully",
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          age: user.age,
+          gender: user.gender,
+          about: user.about,
+          skills: user.skills,
+          photoUrl: user.photoUrl,
+          isPremium: user.isPremium,
+          membershipType: user.membershipType,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const refreshToken = async (req, res, next) => {
+  try {
+    // 1. Get refresh token from cookies
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      throw new ApiError(401, "Refresh token is missing");
+    }
+
+    // 2. Verify the refresh token : we will get { sub: string, sessionId: string }
+    const decoded = verifyRefreshToken(refreshToken);
+
+    // 3. Check if the session exists in the database
+    const session = await sessionModel
+      .findOne({
+        _id: decoded.sid,
+        user: decoded.sub,
+      })
+      .select("+refreshToken");
+
+    // 4. If no matching session is found, return an error
+    if (!session) {
+      throw new ApiError(401, "Session not found");
+    }
+
+    // 5. Check whether the session has been revoked
+    if (session.revoked) {
+      throw new ApiError(401, "Session has been revoked");
+    }
+
+    // 6. Check whether the session has expired
+    if (session.expiresAt < new Date()) {
+      throw new ApiError(401, "Session has expired");
+    }
+
+    // 7. Verify the refresh token against the hashed version stored in the database
+    const isRefreshTokenValid = await bcrypt.compare(
+      refreshToken,
+      session.refreshToken,
+    );
+
+    if (!isRefreshTokenValid) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // 8. Generate a new access token
+    const newAccessToken = generateAccessToken(decoded.sub, decoded.sid);
+
+    // 9. For security reasons, we can also generate a new refresh token and update the session in the database
+    const newRefreshToken = generateRefreshToken(decoded.sub, decoded.sid);
+    const hashedNewRefreshToken = await bcrypt.hash(newRefreshToken, 10);
+
+    // 10. Update the session in the database with the new hashed refresh token
+    session.refreshToken = hashedNewRefreshToken;
+    session.expiresAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+    await session.save();
+
+    // 11. Set the new refresh token in an HTTP-only cookie
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    // 12. Return the new access token in the response
+    return res.status(200).json({
+      status: "success",
+      message: "Access token refreshed successfully",
+      data: {
+        accessToken: newAccessToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { register, login, getMe, refreshToken };
