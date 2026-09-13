@@ -13,7 +13,10 @@ import {
   verifyRefreshToken,
   verifyAccessToken,
 } from "../utils/jwt.util.js";
-import { setRefreshTokenCookie } from "../utils/cookie.util.js";
+import {
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
+} from "../utils/cookie.util.js";
 
 const register = async (req, res, next) => {
   try {
@@ -76,9 +79,8 @@ const register = async (req, res, next) => {
     // 9. Generate access token
     const accessToken = generateAccessToken(newUser._id, sessionId);
 
-    // 10. Return the created user (excluding password)
-    // 11. Include the access token and refresh token in the response
-    res.status(201).json({
+    // 10. Return the created user (excluding password and including access token) in the response
+    return res.status(201).json({
       status: "success",
       message: "User registered successfully",
       data: {
@@ -273,4 +275,65 @@ const refreshToken = async (req, res, next) => {
   }
 };
 
-export { register, login, getMe, refreshToken };
+const logout = async (req, res, next) => {
+  try {
+    // Find the current session using the session ID from the access token
+    // and make sure it belongs to the authenticated user.
+    const session = await sessionModel.findOne({
+      _id: req.auth.sid,
+      user: req.auth.sub, // we can also use req.user._id, but we will use req.auth.sub to be consistent with the refreshToken route
+    });
+
+    // If the session doesn't exist, reject the request.
+    if (!session) {
+      throw new ApiError(401, "Session not found");
+    }
+
+    // Revoke only the current session.
+    session.revoked = true;
+
+    await session.save();
+
+    // Remove the refresh token cookie from this device's browser.
+    clearRefreshTokenCookie(res);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logoutAll = async (req, res, next) => {
+  try {
+    // Our authenticate middleware already verified the access token
+    // and attached the authenticated user to req.user.
+    // req.user contains the User document.
+
+    // Revoke all active sessions belonging to this user.
+    await sessionModel.updateMany(
+      {
+        user: req.auth.sub, // we can also use req.user._id, but we will use req.auth.sub to be consistent with the refreshToken route
+        revoked: false,
+      },
+      {
+        $set: { revoked: true },
+      },
+    );
+
+    // Clear the refresh token cookie from the current device.
+    clearRefreshTokenCookie(res);
+
+    // 200 - OK
+    return res.status(200).json({
+      status: "success",
+      message: "Logged out from all devices successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { register, login, getMe, refreshToken, logout, logoutAll };

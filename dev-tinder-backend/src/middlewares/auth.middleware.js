@@ -29,6 +29,11 @@ const authenticate = async (req, res, next) => {
     // 5. Attach the authenticated user to the request object for further use
     req.user = user;
 
+    // Attach the decoded token payload to the request object for further use. 
+    // We did it because we will need the sessionId in the refreshToken route to check if the session exists in the database.
+    // If we make req.user = decoded, we will lose the user data that we need in the getMe route. So we will make req.auth = decoded to keep the decoded token payload for further use.
+    req.auth = decoded; // dcoded = { sub: string, sessionId: string, iat: number, exp: number }
+
     // 6. continue to protected routes
     next();
   } catch (error) {
@@ -37,3 +42,12 @@ const authenticate = async (req, res, next) => {
 };
 
 export default authenticate;
+
+
+/* 
+  req.auth.sub → "Which user does this token belong to?"
+      
+  req.auth.sid → "Which session/device is this token from?"
+
+  req.user → "Give me the actual User document."
+*/
