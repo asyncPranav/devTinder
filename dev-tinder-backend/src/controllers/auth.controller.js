@@ -96,6 +96,7 @@ const register = async (req, res, next) => {
           photoUrl: newUser.photoUrl,
           isPremium: newUser.isPremium,
           membershipType: newUser.membershipType,
+          role: newUser.role,
         },
         accessToken,
         // refreshToken,
@@ -164,6 +165,7 @@ const login = async (req, res, next) => {
           photoUrl: user.photoUrl,
           isPremium: user.isPremium,
           membershipType: user.membershipType,
+          role: user.role,
         },
         accessToken,
       },
@@ -195,6 +197,7 @@ const getMe = (req, res, next) => {
           photoUrl: user.photoUrl,
           isPremium: user.isPremium,
           membershipType: user.membershipType,
+          role: user.role,
         },
       },
     });

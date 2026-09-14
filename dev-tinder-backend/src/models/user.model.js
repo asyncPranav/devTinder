@@ -88,6 +88,12 @@ const userSchema = new mongoose.Schema(
       enum: ["free", "silver", "gold"],
       default: "free",
     },
+
+    role: {
+      type: String,
+      enum: ["admin", "user"],
+      default: "user",
+    }
   },
   {
     timestamps: true,
