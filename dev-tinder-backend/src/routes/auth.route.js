@@ -2,7 +2,7 @@ import { Router } from "express";
 
 // middlewares
 import validate from "../middlewares/validate.middleware.js";
-import authenticate from "../middlewares/auth.middleware.js";
+import authenticate from "../middlewares/authenticate.middleware.js";
 
 // validators
 import {
