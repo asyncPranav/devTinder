@@ -7,6 +7,7 @@ import notFound from "./middlewares/notFound.middleware.js";
 
 // routes
 import authRouter from "./routes/auth.route.js";
+import profileRouter from "./routes/profile.route.js";
 
 const app = express();
 
@@ -21,7 +22,9 @@ app.get("/health", (req, res) => {
   });
 });
 
+// routes
 app.use("/api/auth", authRouter);
+app.use("/api/profile", profileRouter);
 
 // Handle 404 errors
 app.use(notFound);
