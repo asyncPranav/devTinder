@@ -56,13 +56,25 @@ const sendRequest = async (req, res, next) => {
       status,
     });
 
+    // 5. Populate the fromUserId and toUserId fields for the response.
+    await connection.populate([
+      {
+        path: "fromUserId",
+        select: "firstName lastName photoUrl",
+      },
+      {
+        path: "toUserId",
+        select: "firstName lastName photoUrl",
+      },
+    ]);
+
     res.status(201).json({
       status: "success",
       message: `Connection request ${status === "interested" ? "sent" : "recorded"} successfully`,
       data: connection,
     });
   } catch (error) {
-    // 5. MongoDB error 11000 means a unique index was violated.
+    // 6. MongoDB error 11000 means a unique index was violated.
     // Convert it to the same 409 Conflict used by the app-level check.
     if (error.code === 11000) {
       return next(
@@ -75,7 +87,6 @@ const sendRequest = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // POST /request/review/:status/:requestId
 const reviewRequest = async (req, res, next) => {
@@ -119,6 +130,18 @@ const reviewRequest = async (req, res, next) => {
     // or "rejected".
     connectionRequest.status = status;
     await connectionRequest.save();
+
+    // 5. Populate the fromUserId and toUserId fields for the response.
+    await connectionRequest.populate([
+      {
+        path: "fromUserId",
+        select: "firstName lastName photoUrl",
+      },
+      {
+        path: "toUserId",
+        select: "firstName lastName photoUrl",
+      },
+    ]);
 
     return res.status(200).json({
       status: "success",
