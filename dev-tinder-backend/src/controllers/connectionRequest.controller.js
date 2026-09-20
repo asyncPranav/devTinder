@@ -50,14 +50,14 @@ const sendRequest = async (req, res, next) => {
     // 4. Create a new connection request
     // The partial unique index is the database-level safety net for a
     // duplicate A → B insert caused by a race condition.
-    const connection = await connectionRequestModel.create({
+    const connectionRequest = await connectionRequestModel.create({
       fromUserId,
       toUserId,
       status,
     });
 
     // 5. Populate the fromUserId and toUserId fields for the response.
-    await connection.populate([
+    await connectionRequest.populate([
       {
         path: "fromUserId",
         select: "firstName lastName photoUrl",
@@ -71,7 +71,7 @@ const sendRequest = async (req, res, next) => {
     res.status(201).json({
       status: "success",
       message: `Connection request ${status === "interested" ? "sent" : "recorded"} successfully`,
-      data: connection,
+      data: { connectionRequest },
     });
   } catch (error) {
     // 6. MongoDB error 11000 means a unique index was violated.
