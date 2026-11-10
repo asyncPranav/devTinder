@@ -2,6 +2,13 @@ import userModel from "../models/user.model.js";
 import ApiError from "../utils/ApiError.util.js";
 import { verifyAccessToken } from "../utils/jwt.util.js";
 
+// This middleware is used to authenticate the user by verifying the 
+// access token sent in the Authorization header of the request. And 
+// if the access token is valid, it will attach the authenticated user to
+// the request object for further use in the protected routes. If the 
+// access token is invalid or expired, it will throw an error and 
+// return a 401 Unauthorized response.
+
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
